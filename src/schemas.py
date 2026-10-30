@@ -33,9 +33,11 @@ Gender = Literal["Male", "Female"]
 
 # Diagnósticos ICD-9 agrupados en categorías (la agrupación vive en
 # src/preprocessing.py y se aplica antes de guardar en clean_data).
+# "Missing" = el paciente no tiene ese diagnóstico registrado (pasa sobre todo
+# en diag_2 y diag_3: 358 y 1.423 casos en el dataset).
 DiagGroup = Literal[
     "Circulatory", "Respiratory", "Digestive", "Diabetes", "Injury",
-    "Musculoskeletal", "Genitourinary", "Neoplasms", "Other",
+    "Musculoskeletal", "Genitourinary", "Neoplasms", "Other", "Missing",
 ]
 
 # Especialidad del médico, agrupada (las poco frecuentes van a "Other").
