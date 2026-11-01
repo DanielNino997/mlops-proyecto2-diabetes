@@ -53,3 +53,19 @@ postgresql:
     resources:
       requests: {cpu: 100m, memory: 256Mi}
       limits:   {cpu: 500m, memory: 512Mi}
+
+# Imagen propia con DAGs, src/ y CSV (publicada en DockerHub)
+images:
+  airflow:
+    repository: annamerchanlm/mlops-p2-airflow
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+
+apiSecretKey: "mlops-p2-api-secret-2026-cambiar"
+
+# Variables del proyecto (hosts, credenciales) para las tareas del DAG
+extraEnvFrom: |
+  - configMapRef:
+      name: mlops-airflow-config
+  - secretRef:
+      name: mlops-airflow-secret

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mlops-airflow-config
+  namespace: airflow-local
+data:
+  POSTGRES_HOST: postgres.mlops.svc.cluster.local
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: mlops_data
+  MLFLOW_TRACKING_URI: http://mlflow.mlops.svc.cluster.local:5000
+  MLFLOW_S3_ENDPOINT_URL: http://minio.mlops.svc.cluster.local:9000
+  MLFLOW_ARTIFACT_BUCKET: mlflow-artifacts
+  SOURCE_FILE: /opt/airflow/data/Diabetes/Diabetes.csv
+  GIT_PYTHON_REFRESH: quiet
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mlops-airflow-secret
+  namespace: airflow-local
+type: Opaque
+stringData:
+  POSTGRES_USER: mlops
+  POSTGRES_PASSWORD: mlops_pass_2026
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minio_pass_2026
