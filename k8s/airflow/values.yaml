@@ -1,0 +1,55 @@
+# Base: MLOPS_PUJ/Niveles/3/Airflow/values/values-local.yaml + recursos
+executor: LocalExecutor
+
+env:
+  - name: AIRFLOW__CORE__LOAD_EXAMPLES
+    value: "False"
+
+redis:
+  enabled: false
+statsd:
+  enabled: false
+
+scheduler:
+  resources:
+    requests: {cpu: 250m, memory: 768Mi}
+    limits:   {cpu: "1",  memory: 2Gi}
+
+apiServer:
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits:   {cpu: 500m, memory: 1Gi}
+
+dagProcessor:
+  resources:
+    requests: {cpu: 100m, memory: 384Mi}
+    limits:   {cpu: 500m, memory: 1Gi}
+
+triggerer:
+  persistence:
+    size: 1Gi
+  resources:
+    requests: {cpu: 50m,  memory: 256Mi}
+    limits:   {cpu: 500m, memory: 512Mi}
+
+# useHelmHooks: false -> las migraciones corren como Job normal (compatible con --wait)
+migrateDatabaseJob:
+  useHelmHooks: false
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits:   {cpu: 500m, memory: 1Gi}
+
+createUserJob:
+  useHelmHooks: false
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits:   {cpu: 500m, memory: 1Gi}
+
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      size: 2Gi
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits:   {cpu: 500m, memory: 512Mi}
