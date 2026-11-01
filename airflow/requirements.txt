@@ -1,0 +1,11 @@
+# Dependencias EXTRA para las tareas del DAG (Airflow ya trae el resto).
+# Estas versiones deben coincidir con las de api/requirements.txt: el modelo se
+# guarda en una versión de scikit-learn/numpy/pandas y la API lo lee en otra.
+# MLflow: mismo número que el servidor de Ana (2.16.2).
+pandas==2.3.3
+numpy==2.0.2
+scikit-learn==1.6.1
+mlflow-skinny==2.16.2
+boto3
+psycopg2-binary
+matplotlib

@@ -55,7 +55,7 @@ MLFLOW_ARTIFACT_BUCKET = _env("MLFLOW_ARTIFACT_BUCKET", "mlflow-artifacts")
 # metadatos.
 POSTGRES_HOST = _env("POSTGRES_HOST", "postgres")
 POSTGRES_PORT = int(_env("POSTGRES_PORT", "5432"))
-POSTGRES_DB = _env("POSTGRES_DB", "diabetes_data")
+POSTGRES_DB = _env("POSTGRES_DB", "mlops_data")
 POSTGRES_USER = _env("POSTGRES_USER")          # viene del Secret
 POSTGRES_PASSWORD = _env("POSTGRES_PASSWORD")  # viene del Secret
 
@@ -84,6 +84,37 @@ BATCH_SIZE = int(_env("BATCH_SIZE", "15000"))
 
 
 # ---------------------------------------------------------------------------
+# Columnas del archivo fuente (50), en el orden del CSV. raw_data las guarda
+# todas como TEXT, tal como llegan, sin transformarlas.
+# ---------------------------------------------------------------------------
+SOURCE_COLUMNS = [
+    "encounter_id", "patient_nbr", "race", "gender", "age", "weight",
+    "admission_type_id", "discharge_disposition_id", "admission_source_id",
+    "time_in_hospital", "payer_code", "medical_specialty",
+    "num_lab_procedures", "num_procedures", "num_medications",
+    "number_outpatient", "number_emergency", "number_inpatient",
+    "diag_1", "diag_2", "diag_3", "number_diagnoses",
+    "max_glu_serum", "A1Cresult", "metformin", "repaglinide", "nateglinide",
+    "chlorpropamide", "glimepiride", "acetohexamide", "glipizide",
+    "glyburide", "tolbutamide", "pioglitazone", "rosiglitazone", "acarbose",
+    "miglitol", "troglitazone", "tolazamide", "examide", "citoglipton",
+    "insulin", "glyburide-metformin", "glipizide-metformin",
+    "glimepiride-pioglitazone", "metformin-rosiglitazone",
+    "metformin-pioglitazone", "change", "diabetesMed", "readmitted",
+]
+
+# Tabla de control de lotes (qué filas del archivo corresponden a cada lote).
+BATCH_TABLE = _env("BATCH_TABLE", "ingestion_batches")
+
+# Estados de una fila de raw_data a lo largo del DAG.
+RAW_STATUS_LOADED = "loaded"        # recién insertada
+RAW_STATUS_VALIDATED = "validated"  # pasó la validación de calidad
+RAW_STATUS_REJECTED = "rejected"    # falló la validación (se conserva para auditoría)
+RAW_STATUS_PROCESSED = "processed"  # ya está en clean_data
+RAW_STATUS_EXCLUDED = "excluded"    # válida, pero excluida en la limpieza
+
+
+# ---------------------------------------------------------------------------
 # Problema de ML
 # ---------------------------------------------------------------------------
 # PENDIENTE EDA: confirmar nombre de la columna y sus valores en el dataset
@@ -95,12 +126,32 @@ TARGET_COLUMN = "readmitted_lt30"     # columna binaria (0/1) en clean_data
 # Columna que se usa para separar train/val/test por paciente.
 PATIENT_ID_COLUMN = "patient_nbr"
 
-# Métrica principal para elegir y promover el modelo.
-# PENDIENTE decisión conjunta: ver docs/decisiones.md.
-PRIMARY_METRIC = _env("PRIMARY_METRIC", "recall")
+# Métrica principal para elegir y promover el modelo. Opciones: "f2", "recall",
+# "f1", "pr_auc", "roc_auc". Por defecto F2: pesa el recall el doble que la
+# precisión (perder a un paciente que sí se readmite cuesta más que una alerta
+# de más) y, a diferencia de recall solo, no premia a un modelo que marque a
+# todos como readmitidos.
+PRIMARY_METRIC = _env("PRIMARY_METRIC", "f2")
 
-# Umbral de decisión: si la probabilidad >= THRESHOLD, la predicción es 1.
+# El umbral de decisión de cada modelo se elige en validación para maximizar
+# F-beta con este beta (2 = el recall pesa el doble). Se guarda como tag de la
+# versión del modelo en MLflow y la API lo usa al predecir.
+THRESHOLD_BETA = float(_env("THRESHOLD_BETA", "2.0"))
+
+# Umbral de respaldo si el modelo no trae uno guardado.
 DECISION_THRESHOLD = float(_env("DECISION_THRESHOLD", "0.5"))
+
+# Un candidato solo reemplaza al champion si mejora la métrica principal, en el
+# mismo conjunto de prueba, al menos en esta cantidad. 0 = basta con mejorar.
+MIN_IMPROVEMENT = float(_env("MIN_IMPROVEMENT", "0.0"))
+
+# Mínimo de positivos que debe tener cada conjunto para entrenar y evaluar.
+MIN_POSITIVES_PER_SPLIT = int(_env("MIN_POSITIVES_PER_SPLIT", "30"))
+
+RANDOM_STATE = int(_env("RANDOM_STATE", "42"))
+
+# Núcleos que puede usar el entrenamiento (el pod de Airflow tiene límite de CPU).
+TRAIN_N_JOBS = int(_env("TRAIN_N_JOBS", "2"))
 
 # Proporciones del split por paciente (deben sumar 1).
 TRAIN_FRACTION = 0.70

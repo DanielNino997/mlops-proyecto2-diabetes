@@ -109,12 +109,23 @@ NUMERIC_FEATURES: list[str] = [
     "num_medications", "number_diagnoses", "number_outpatient",
     "number_emergency", "number_inpatient",
 ]
-# PENDIENTE EDA: los tres *_id son códigos, no cantidades. Decidir si se
-# tratan como categóricos (one-hot) y moverlos a CATEGORICAL_FEATURES.
 
 CATEGORICAL_FEATURES: list[str] = [
     c for c in FEATURE_COLUMNS if c not in NUMERIC_FEATURES
 ]
+
+# Los tres *_id llegan como números pero son códigos de un catálogo, no
+# cantidades: que el código 7 sea "mayor" que el 1 no significa nada. Por eso
+# la API los recibe como enteros, pero el modelo los codifica con one-hot.
+CODE_FEATURES: list[str] = [
+    "admission_type_id", "discharge_disposition_id", "admission_source_id",
+]
+
+# Cómo los trata el Pipeline de entrenamiento (src/train.py).
+MODEL_NUMERIC_FEATURES: list[str] = [
+    c for c in NUMERIC_FEATURES if c not in CODE_FEATURES
+]
+MODEL_CATEGORICAL_FEATURES: list[str] = CATEGORICAL_FEATURES + CODE_FEATURES
 
 
 # Valores de ejemplo para el botón de Streamlit y para el archivo de Locust.
@@ -178,7 +189,11 @@ class ModelInfoResponse(BaseModel):
     model_alias: str
     run_id: Optional[str]
     status: Literal["loaded", "not_loaded", "error"]
+    threshold: Optional[float] = None
     loaded_at: Optional[datetime]
+    last_check_at: Optional[datetime] = None
+    refresh_interval_seconds: Optional[int] = None
+    last_error: Optional[str] = None
     features: list[str] = FEATURE_COLUMNS
 
 
@@ -188,3 +203,8 @@ class ModelInfoResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"
     model_loaded: bool
+
+
+class ReadyResponse(BaseModel):
+    status: Literal["ready"] = "ready"
+    model_version: Optional[str] = None
