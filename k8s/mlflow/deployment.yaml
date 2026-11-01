@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: mlops
+  labels: {app: mlflow}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: mlflow}
+  template:
+    metadata:
+      labels: {app: mlflow}
+    spec:
+      containers:
+        - name: mlflow
+          image: annamerchanlm/mlops-p2-mlflow:2.16.2
+          command: ["mlflow", "server"]
+          args:
+            - --host=0.0.0.0
+            - --port=5000
+            - --workers=2
+            - --backend-store-uri=postgresql+psycopg2://$(PG_USER):$(PG_PASSWORD)@postgres:5432/mlflow
+            - --default-artifact-root=s3://mlflow-artifacts/
+            - --no-serve-artifacts
+          env:
+            - name: PG_USER
+              valueFrom: {secretKeyRef: {name: postgres-secret, key: POSTGRES_USER}}
+            - name: PG_PASSWORD
+              valueFrom: {secretKeyRef: {name: postgres-secret, key: POSTGRES_PASSWORD}}
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: http://minio:9000
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: {secretKeyRef: {name: minio-secret, key: AWS_ACCESS_KEY_ID}}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: minio-secret, key: AWS_SECRET_ACCESS_KEY}}
+          ports:
+            - containerPort: 5000
+          resources:
+            requests: {cpu: 200m, memory: 512Mi}
+            limits:   {cpu: "1",  memory: 1Gi}
+          readinessProbe:
+            httpGet: {path: /health, port: 5000}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: 5000}
+            initialDelaySeconds:
