@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: mlops
+data:
+  01-create-mlflow-db.sql: |
+    CREATE DATABASE mlflow;
