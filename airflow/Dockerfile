@@ -9,7 +9,7 @@ FROM apache/airflow:${AIRFLOW_VERSION}
 COPY airflow/requirements.txt /tmp/requirements.txt
 # Sin --constraint de Airflow: fija scikit-learn 1.7 y aquí necesitamos 1.6.1,
 # igual que la API (el modelo entrenado aquí se lee allá). Verificado con pip check.
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && pip check
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && pip uninstall -y apache-airflow-providers-snowflake && pip check
 
 # Código compartido (config, db, preprocessing, train), esquema SQL, DAG y datos
 COPY --chown=airflow:root src/ /opt/airflow/src/
