@@ -1,9 +1,12 @@
 # Base: MLOPS_PUJ/Niveles/3/Airflow/values/values-local.yaml + recursos
 executor: LocalExecutor
+airflowVersion: "3.0.6"
 
 env:
   - name: AIRFLOW__CORE__LOAD_EXAMPLES
     value: "False"
+  - name: AIRFLOW__API__WORKERS
+    value: "1"
 
 redis:
   enabled: false
@@ -12,13 +15,13 @@ statsd:
 
 scheduler:
   resources:
-    requests: {cpu: 250m, memory: 768Mi}
-    limits:   {cpu: "1",  memory: 2Gi}
+    requests: {cpu: 500m, memory: 1Gi}
+    limits:   {cpu: "2",  memory: 3Gi}
 
 apiServer:
   resources:
     requests: {cpu: 100m, memory: 512Mi}
-    limits:   {cpu: 500m, memory: 1Gi}
+    limits:   {cpu: "1",  memory: 2Gi}
 
 dagProcessor:
   resources:
@@ -58,7 +61,7 @@ postgresql:
 images:
   airflow:
     repository: annamerchanlm/mlops-p2-airflow
-    tag: "0.1.0"
+    tag: "3.0.6-v1"
     pullPolicy: IfNotPresent
 
 apiSecretKey: "mlops-p2-api-secret-2026-cambiar"
