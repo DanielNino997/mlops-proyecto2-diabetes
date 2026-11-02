@@ -8,7 +8,7 @@ Sistema MLOps completo desplegado en Kubernetes: los datos clínicos llegan por 
 
 **Dataset:** Diabetes 130-US hospitals (1999-2008), versión modificada entregada por el curso.
 
-> **Estado:** en construcción. Entrega: 2 de noviembre de 2026.
+> **Estado:** completo y desplegado en Kubernetes. Entrega: 2 de noviembre de 2026.
 
 ---
 
@@ -131,10 +131,11 @@ Pruebas de carga: ver `docs/pruebas_de_carga.md`. Métricas para Grafana: `docs/
 
 | Imagen | Comando |
 |---|---|
-| Airflow + DAG | `docker build -f airflow/Dockerfile -t dnino97/airflow-diabetes:latest .` |
-| API | `docker build -f api/Dockerfile -t dnino97/inference-api:latest .` |
-| Streamlit | `docker build -f ui/Dockerfile -t dnino97/streamlit-ui:latest .` |
-| Locust | `docker build -f locust/Dockerfile -t dnino97/locust-diabetes:latest .` |
+| Airflow + DAG | `docker build -f airflow/Dockerfile -t annamerchanlm/mlops-p2-airflow:3.0.6-v1 .` |
+| MLflow | `docker build -t annamerchanlm/mlops-p2-mlflow:2.16.2 mlflow/` |
+| API | `docker build -f api/Dockerfile -t dnino97/diabetes-api:1.0 .` |
+| Streamlit | `docker build -f ui/Dockerfile -t dnino97/diabetes-ui:1.0 .` |
+| Locust | `docker build -f locust/Dockerfile -t dnino97/diabetes-locust:1.0 .` |
 
 ### Variables de entorno que esperan los componentes
 
@@ -245,16 +246,18 @@ Resultado de referencia (7 ejecuciones del DAG): `raw_data` 101.766 filas, `clea
 
 ## Checklist de aceptación (sección 9 del enunciado)
 
-- [ ] Todo desplegado en Kubernetes (no solo docker-compose)
-- [ ] El DAG corre y muestra varias tareas independientes
-- [ ] Datos crudos y procesados en tablas separadas
-- [ ] Carga por lotes de máximo 15.000 registros
-- [ ] MLflow con backend en PostgreSQL y artefactos en MinIO (sin SQLite)
-- [ ] La API usa el modelo que viene de MLflow
-- [ ] La API no tiene una ruta local quemada al modelo
-- [ ] Cada inferencia queda registrada en la base de datos
-- [ ] La API expone `/metrics`
-- [ ] Prometheus recolecta las métricas de la API
-- [ ] Grafana muestra el efecto de una prueba con Locust
-- [ ] Cada contenedor tiene `requests` y `limits`
-- [ ] Las imágenes propias están en DockerHub
+| # | Condición | Estado | Evidencia |
+|---|---|---|---|
+| 1 | Todo desplegado en Kubernetes | ✅ | `kubectl get pods -n mlops` y `-n airflow-local` |
+| 2 | El DAG corre y muestra varias tareas independientes | ✅ | 7 ejecuciones, 11 tareas cada una; 3 entrenamientos en paralelo |
+| 3 | Datos crudos y procesados en tablas separadas | ✅ | `raw_data` (101.766) y `clean_data` (99.340) |
+| 4 | Carga por lotes de máximo 15.000 registros | ✅ | `ingestion_batches`: 7 lotes (6 × 15.000 + 11.766) |
+| 5 | MLflow con backend PostgreSQL y artefactos en MinIO | ✅ | Base `mlflow` en PostgreSQL; bucket `mlflow-artifacts` (244 objetos) |
+| 6 | La API usa el modelo que viene de MLflow | ✅ | `/model-info`: `diabetes-readmission` v7, alias `champion` |
+| 7 | La API no tiene una ruta local quemada | ✅ | Carga por alias; pasó de v2 a v7 sola, 8 s después de la promoción |
+| 8 | Cada inferencia queda registrada | ✅ | `inference_logs`: 38.697 filas de Locust registradas bajo carga |
+| 9 | La API expone `/metrics` | ✅ | Métricas `diabetes_api_*` (`docs/metricas.md`) |
+| 10 | Prometheus recolecta las métricas | ✅ | Targets `up` por cada pod de `inference-api` |
+| 11 | Grafana muestra el efecto de Locust | ✅ | Dashboard "API de inferencia - Diabetes" (`monitoring/grafana/api-dashboard.json`) |
+| 12 | Cada contenedor tiene `requests` y `limits` | ✅ | 18 contenedores, incluidos los sidecars de Airflow |
+| 13 | Imágenes propias en DockerHub | ✅ | Ver tabla de imágenes en "Despliegue en Kubernetes" |
