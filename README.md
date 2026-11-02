@@ -238,6 +238,7 @@ Resultado de referencia (7 ejecuciones del DAG): `raw_data` 101.766 filas, `clea
 |---|---|
 | `annamerchanlm/mlops-p2-mlflow:2.16.2` | Servidor MLflow (`mlflow/Dockerfile`) |
 | `annamerchanlm/mlops-p2-airflow:3.0.6-v1` | Airflow con DAG, código y datos (`airflow/Dockerfile`) |
+| `dnino97/airflow-diabetes:3.0.6` | Misma imagen de Airflow, construida con el mismo `airflow/Dockerfile` (equivalente a la anterior; en el clúster se usa `annamerchanlm/mlops-p2-airflow:3.0.6-v1`) |
 | `dnino97/diabetes-api:1.0` | API de inferencia (`api/Dockerfile`) |
 | `dnino97/diabetes-ui:1.0` | Streamlit (`ui/Dockerfile`) |
 | `dnino97/diabetes-locust:1.0` | Locust (`locust/Dockerfile`) |
@@ -253,11 +254,36 @@ Resultado de referencia (7 ejecuciones del DAG): `raw_data` 101.766 filas, `clea
 | 3 | Datos crudos y procesados en tablas separadas | ✅ | `raw_data` (101.766) y `clean_data` (99.340) |
 | 4 | Carga por lotes de máximo 15.000 registros | ✅ | `ingestion_batches`: 7 lotes (6 × 15.000 + 11.766) |
 | 5 | MLflow con backend PostgreSQL y artefactos en MinIO | ✅ | Base `mlflow` en PostgreSQL; bucket `mlflow-artifacts` (244 objetos) |
-| 6 | La API usa el modelo que viene de MLflow | ✅ | `/model-info`: `diabetes-readmission` v7, alias `champion` |
+| 6 | La API usa el modelo que viene de MLflow | ✅ | `/model-info`: `diabetes-readmission` v7, alias `champion`. Captura de la API en la VM: `docs/evidencias/15_api_predict.png` |
 | 7 | La API no tiene una ruta local quemada | ✅ | Carga por alias; pasó de v2 a v7 sola, 8 s después de la promoción |
 | 8 | Cada inferencia queda registrada | ✅ | `inference_logs`: 38.697 filas de Locust registradas bajo carga |
-| 9 | La API expone `/metrics` | ✅ | Métricas `diabetes_api_*` (`docs/metricas.md`) |
+| 9 | La API expone `/metrics` | ✅ | Métricas `diabetes_api_*` (`docs/metricas.md`). Captura: `docs/evidencias/18_api_metrics.png` |
 | 10 | Prometheus recolecta las métricas | ✅ | Targets `up` por cada pod de `inference-api` |
 | 11 | Grafana muestra el efecto de Locust | ✅ | Dashboard "API de inferencia - Diabetes" (`monitoring/grafana/api-dashboard.json`) |
 | 12 | Cada contenedor tiene `requests` y `limits` | ✅ | 18 contenedores, incluidos los sidecars de Airflow |
 | 13 | Imágenes propias en DockerHub | ✅ | Ver tabla de imágenes en "Despliegue en Kubernetes" |
+
+---
+
+## Evidencias
+
+Capturas en `docs/evidencias/` (numeración de `docs/evidencias.md`). Las de API y Streamlit se tomaron en la VM del Carril B (ejecución local, sin base de datos de inferencias) con el modelo entrenado sobre los datos reales. Las de Airflow, MLflow, `inference_logs`, Kubernetes, Prometheus y Grafana corresponden al clúster (Carril A).
+
+### API de inferencia
+| Captura | Qué demuestra |
+|---|---|
+| ![](docs/evidencias/15_api_predict.png) | `POST /predict` exitoso desde Swagger: predicción, probabilidad, umbral y versión del modelo |
+| ![](docs/evidencias/15b_api_curl_predict.png) | Misma predicción por línea de comandos (curl) |
+| ![](docs/evidencias/16_api_predict_422.png) | Dato inválido rechazado con 422 y detalle del campo |
+| ![](docs/evidencias/18_api_metrics.png) | Pruebas por curl y métricas Prometheus `diabetes_api_*` |
+
+### Interfaz Streamlit
+| Captura | Qué demuestra |
+|---|---|
+| ![](docs/evidencias/21_streamlit_formulario.png) | Interfaz conectada a la API y al modelo (ejemplo 1: 52,9 % frente a umbral 42,3 %) |
+| ![](docs/evidencias/22_streamlit_prediccion.png) | Ejemplo 2, riesgo alto: 65,8 % |
+| ![](docs/evidencias/22b_streamlit_json_correcto.png) | Pestaña JSON manual con una solicitud válida |
+| ![](docs/evidencias/23_streamlit_error_validacion.png) | Error de validación legible (`age` fuera de las opciones permitidas) |
+
+### Pruebas de carga
+Resultados y análisis en `docs/pruebas_de_carga.md`; reportes y CSV de Locust en `docs/resultados/`.
