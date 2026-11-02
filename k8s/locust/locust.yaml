@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust
+  namespace: mlops
+  labels: {app: locust}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: locust}
+  template:
+    metadata:
+      labels: {app: locust}
+    spec:
+      containers:
+        - name: locust
+          image: dnino97/diabetes-locust:1.0
+          command: ["locust"]
+          args: ["-f", "/app/locustfile.py", "--host", "http://inference-api:8000"]
+          ports:
+            - containerPort: 8089
+          resources:
+            requests: {cpu: 200m, memory: 256Mi}
+            limits:   {cpu: "1",  memory: 512Mi}
+          readinessProbe:
+            tcpSocket: {port: 8089}
+            initialDelaySeconds: 5
+          livenessProbe:
+            tcpSocket: {port: 8089}
+            initialDelaySeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust
+  namespace: mlops
+spec:
+  selector: {app: locust}
+  ports:
+    - port: 8089
+      targetPort: 8089
