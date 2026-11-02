@@ -1,0 +1,38 @@
+CPU por pod de inference-api (nucleos), rate(process_cpu_seconds_total[1m]), hora Bogota
+19:55-20:08 = 1 replica | 20:13-20:24 = 3 replicas
+19:50 9xbzg:0.00  f6qpz:0.00
+19:51 9xbzg:0.00  f6qpz:0.00
+19:52 9xbzg:0.21  f6qpz:0.14
+19:53 9xbzg:0.11  f6qpz:0.08
+19:54 9xbzg:0.00  f6qpz:0.00  ksvfp:0.00
+19:55 ksvfp:0.00
+19:56 ksvfp:0.00
+19:57 ksvfp:0.07
+19:58 ksvfp:0.45
+19:59 ksvfp:0.83
+20:00 ksvfp:0.93
+20:01 ksvfp:0.69
+20:02 ksvfp:0.79
+20:03 ksvfp:0.88
+20:04 ksvfp:0.71
+20:05 ksvfp:0.43
+20:06 ksvfp:0.65
+20:07 ksvfp:0.48
+20:08 ksvfp:0.00
+20:09 bhsmx:0.00  d6jdk:0.00  ksvfp:0.00  wxdjl:0.00
+20:10 9qv6k:0.00  bhsmx:0.00  wxdjl:0.00
+20:11 9qv6k:0.00  bhsmx:0.00  wxdjl:0.00
+20:12 9qv6k:0.00  bhsmx:0.00  wxdjl:0.00
+20:13 9qv6k:0.00  bhsmx:0.00  wxdjl:0.00
+20:14 9qv6k:0.10  bhsmx:0.11  wxdjl:0.07
+20:15 9qv6k:0.18  bhsmx:0.25  wxdjl:0.19
+20:16 9qv6k:0.30  bhsmx:0.36  wxdjl:0.27
+20:17 9qv6k:0.42  bhsmx:0.45  wxdjl:0.34
+20:18 9qv6k:0.52  bhsmx:0.56  wxdjl:0.44
+20:19 9qv6k:0.64  bhsmx:0.59  wxdjl:0.49
+20:20 9qv6k:0.70  bhsmx:0.64  wxdjl:0.56
+20:21 9qv6k:0.69  bhsmx:0.68  wxdjl:0.61
+20:22 9qv6k:0.68  bhsmx:0.66  wxdjl:0.65
+20:23 9qv6k:0.68  bhsmx:0.67  wxdjl:0.65
+20:24 9qv6k:0.18  bhsmx:0.16  wxdjl:0.17
+20:25 9qv6k:0.00  bhsmx:0.00  wxdjl:0.00
