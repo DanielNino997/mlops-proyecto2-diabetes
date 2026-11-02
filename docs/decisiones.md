@@ -1,4 +1,6 @@
-# Decisiones de diseño (carril B: datos, modelo y aplicación)
+# Decisiones de diseño
+
+Carril B (datos, modelo y aplicación) y carril A (plataforma en Kubernetes).
 
 Formato: **decisión → por qué → alternativa descartada**.
 
@@ -54,6 +56,42 @@ Formato: **decisión → por qué → alternativa descartada**.
 - **Esquema de tablas**: se usa el `sql/init.sql` de Ana sin cambios (`raw_data` guarda cada fila completa en `payload` JSONB). `sql/pipeline.sql` agrega lo que falta y el DAG lo ejecuta en `init_schema`: la tabla `ingestion_batches` (control de lotes) y la columna `clean_data.split`.
 - **Base de datos de datos**: `mlops_data` (la de MLflow es otra: `mlflow`), ambas en el mismo PostgreSQL.
 
-## Riesgos conocidos
-- **Los datos reales aún no se entrenaron en este entorno de desarrollo**: las métricas finales salen de la primera ejecución del DAG en el clúster (registrarlas en la presentación).
-- **Prometheus y réplicas**: scrapear el Service `inference-api` reparte cada lectura entre pods distintos y mezcla los contadores. Con varias réplicas hay que descubrir los pods (Service headless o `kubernetes_sd_configs`).
+## Riesgos conocidos (estado al cierre)
+- ~~Los datos reales aún no se entrenaron en este entorno~~ → **Resuelto**: el DAG corrió 7 veces en el clúster (101.766 filas en `raw_data`, 99.340 en `clean_data`); `champion` = v7 (random_forest, test F2 = 0,4365).
+- ~~Prometheus y réplicas~~ → **Resuelto**: Prometheus descubre cada pod de la API con `kubernetes_sd_configs` (ver sección de plataforma).
+
+## Plataforma (carril A)
+
+### Decisiones
+- **Clúster**: k3s embebido en Rancher (contenedor `rancher/rancher` en la VM). Es el que usa el curso y la guía de Airflow indica no crear `kind` si ya hay un clúster. La VM no tiene sudo.
+- **Namespaces**: `mlops` (datos, modelos, API, UI, observabilidad, Locust) y `airflow-local` (Airflow, como en la guía).
+- **Un solo PostgreSQL** con dos bases: `mlops_data` (raw, clean, inference_logs, ingestion_batches) y `mlflow` (metadatos). Separa las capas sin gastar RAM en dos instancias. Airflow usa su propio PostgreSQL (el del chart).
+- **Persistencia**: PVC (`local-path`) solo en PostgreSQL y MinIO, que guardan estado. MLflow, la API, Streamlit, Prometheus y Grafana no tienen estado propio (Grafana se provisiona desde ConfigMaps).
+- **Versiones**: MLflow 2.16.2 (servidor y clientes), Airflow 3.0.6 (chart 1.22.0 con `airflowVersion: "3.0.6"`), Python 3.11. Imagen de MinIO `pgsty/minio` con versión fija (MinIO dejó de publicar imágenes oficiales).
+- **Imágenes propias en DockerHub** con tag versionado (nunca `latest`): `mlops-p2-mlflow:2.16.2` y `mlops-p2-airflow:3.0.6-v1`. Cada cambio del DAG implica un tag nuevo.
+- **ConfigMap y Secret por componente**: la configuración no sensible (hosts, puertos, URLs) va en ConfigMaps y las credenciales en Secrets, que los Deployments cargan con `envFrom`.
+- **Variables de Airflow**: `k8s/airflow/config.yaml` crea un ConfigMap y un Secret en `airflow-local` con hosts completos (`postgres.mlops.svc.cluster.local`), porque un pod no puede leer Secrets de otro namespace ni resolver nombres cortos fuera del suyo.
+- **Probes de la API**: readiness en `/ready` (solo recibe tráfico con el modelo cargado) y liveness en `/health`, con `timeoutSeconds: 5`. La liveness es más paciente (`failureThreshold: 6`) porque reiniciar es la medida más drástica.
+- **Prometheus por pod**: `kubernetes_sd_configs` (role pod) con una ServiceAccount y un Role de solo lectura en `mlops`. Mide cada réplica de la API por separado y descubre réplicas nuevas sin cambiar configuración.
+- **Grafana como código**: datasource y dashboard provisionados desde ConfigMaps (`monitoring/grafana/api-dashboard.json`); el tablero se recrea solo si el pod se reinicia.
+- **Acceso**: el firewall de la VM solo permite SSH; las interfaces se exponen con `kubectl port-forward` + reenvío de puertos de VS Code. NodePort no aplica porque el clúster vive dentro del contenedor de Rancher.
+- **Secretos**: están en el repositorio en texto plano (base64 no cifra). Aceptable para un ejercicio académico en una VM cerrada; en producción se usarían Sealed Secrets o un gestor de secretos.
+
+### Resultados de las pruebas de carga
+| Configuración | RPS promedio | Fallos | p50 | p95 | Reinicios |
+|---|---:|---:|---:|---:|---:|
+| 1 réplica (1 CPU / 1 GB), probes por defecto | 17,5 | 1,9 % | 2,8 s | 17 s | 5 |
+| 3 réplicas (300m–1 CPU / 512Mi–1Gi), probes ajustadas | 48,4 | 0 % | 200 ms | 1,9 s | 0 |
+
+Carga escalonada de 20 en 20 usuarios cada minuto hasta 200. Throughput ×2,8: no llega a 3× porque las réplicas comparten 4 CPU con Locust, PostgreSQL (que registra cada predicción), Prometheus y Airflow. La mejora de latencia es mayor que ×3 porque en la prueba de 1 réplica los reinicios por la liveness probe perdían la cola de peticiones. Detalle en `docs/pruebas_de_carga.md` y `docs/resultados/`.
+
+### Dificultades encontradas y solución
+1. **El k3s de Rancher no traía StorageClass** → ningún PVC se podía crear. Se instaló `local-path-provisioner` como StorageClass por defecto.
+2. **`raw.githubusercontent.com` bloqueado desde la VM** → los archivos se trajeron con `git clone` por SSH y Helm desde `get.helm.sh`.
+3. **Conflicto de dependencias**: Airflow 3.2.2 exige `cachetools>=6` y MLflow 2.16.2 `cachetools<6`. Se usó Airflow 3.0.6, compatible con MLflow 2.16.2 y con las versiones de scikit-learn de la API.
+4. **Helm `--wait` + hooks**: las migraciones de Airflow son un hook que corre después de que todo esté listo, y los pods esperaban las migraciones (bloqueo mutuo). Solución: `useHelmHooks: false`.
+5. **api-server de Airflow en reinicio continuo**: con 4 workers no cabía en 1 Gi y los procesos hijos morían. Solución: `AIRFLOW__API__WORKERS=1` y límite de 2 Gi.
+6. **Probes por defecto bajo carga**: con 1 réplica saturada, `/health` tardaba más de 1 s y Kubernetes reinició la API 5 veces en plena prueba de Locust (falla en cascada). Con `timeoutSeconds: 5` hubo 0 reinicios en la prueba de 3 réplicas.
+7. **Límite de 4 CPU de la VM**: 3 réplicas con `requests: 1 CPU` no cabían; se usaron `requests: 300m` y `limits: 1`.
+8. **Sidecars `log-groomer` del chart sin `limits`** → se les agregaron recursos en `values.yaml` (condición de aceptación #12).
+9. **`args` vs `command` en Locust**: `args` reemplazó el `CMD` completo de la imagen (incluido el ejecutable `locust`) y el pod quedó en `CrashLoopBackOff`. Solución: `command: ["locust"]` + `args`.
