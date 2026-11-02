@@ -24,6 +24,21 @@ data:
         url: http://prometheus:9090
         isDefault: true
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: mlops
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: mlops
+        folder: MLOps
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -56,9 +71,15 @@ spec:
             initialDelaySeconds: 30
           volumeMounts:
             - {name: datasources, mountPath: /etc/grafana/provisioning/datasources}
+            - {name: dashboard-provider, mountPath: /etc/grafana/provisioning/dashboards}
+            - {name: dashboards, mountPath: /var/lib/grafana/dashboards}
       volumes:
         - name: datasources
           configMap: {name: grafana-datasources}
+        - name: dashboard-provider
+          configMap: {name: grafana-dashboard-provider}
+        - name: dashboards
+          configMap: {name: grafana-dashboards}
 ---
 apiVersion: v1
 kind: Service
