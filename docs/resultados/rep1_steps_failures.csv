@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences
+GET,/model-info,"ConnectionResetError(104, 'Connection reset by peer')",3
+POST,/predict,CatchResponseError('HTTP 0: '),188
+GET,/model-info,"ConnectionRefusedError(111, 'Connection refused')",6
