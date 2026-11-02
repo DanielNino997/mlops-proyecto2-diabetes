@@ -14,6 +14,10 @@ statsd:
   enabled: false
 
 scheduler:
+  logGroomerSidecar:
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits:   {cpu: 100m, memory: 128Mi}
   resources:
     requests: {cpu: 500m, memory: 1Gi}
     limits:   {cpu: "2",  memory: 3Gi}
@@ -24,11 +28,19 @@ apiServer:
     limits:   {cpu: "1",  memory: 2Gi}
 
 dagProcessor:
+  logGroomerSidecar:
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits:   {cpu: 100m, memory: 128Mi}
   resources:
     requests: {cpu: 100m, memory: 384Mi}
     limits:   {cpu: 500m, memory: 1Gi}
 
 triggerer:
+  logGroomerSidecar:
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits:   {cpu: 100m, memory: 128Mi}
   persistence:
     size: 1Gi
   resources:
