@@ -23,13 +23,13 @@ spec:
             - --backend-store-uri=postgresql+psycopg2://$(PG_USER):$(PG_PASSWORD)@postgres:5432/mlflow
             - --default-artifact-root=s3://mlflow-artifacts/
             - --no-serve-artifacts
+          envFrom:
+            - configMapRef: {name: mlflow-config}
           env:
             - name: PG_USER
               valueFrom: {secretKeyRef: {name: postgres-secret, key: POSTGRES_USER}}
             - name: PG_PASSWORD
               valueFrom: {secretKeyRef: {name: postgres-secret, key: POSTGRES_PASSWORD}}
-            - name: MLFLOW_S3_ENDPOINT_URL
-              value: http://minio:9000
             - name: AWS_ACCESS_KEY_ID
               valueFrom: {secretKeyRef: {name: minio-secret, key: AWS_ACCESS_KEY_ID}}
             - name: AWS_SECRET_ACCESS_KEY
