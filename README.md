@@ -155,7 +155,91 @@ El DAG crea las tablas solo (`init_schema` ejecuta `sql/init.sql`). La API expon
 
 ## Despliegue en Kubernetes
 
-*Pendiente: se documentará cuando el clúster esté integrado.*
+Clúster: k3s embebido en Rancher (contenedor `rancher/rancher` en la VM, sin permisos de sudo).
+Dos namespaces: `mlops` (plataforma y aplicación) y `airflow-local` (Airflow, como en la guía del curso).
+
+### 0. Prerrequisitos del clúster
+
+- `kubectl` y `helm` en `~/.local/bin`, con el kubeconfig del clúster `local` de Rancher en `~/.kube/config`.
+- StorageClass por defecto `local-path` (el k3s de Rancher no la trae):
+
+```bash
+git clone --depth 1 --branch v0.0.31 git@github.com:rancher/local-path-provisioner.git
+sed -i 's#/opt/local-path-provisioner#/var/lib/rancher/local-path#' local-path-provisioner/deploy/local-path-storage.yaml
+docker exec -i rancher kubectl apply -f - < local-path-provisioner/deploy/local-path-storage.yaml
+kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
+### 1. Datos y modelos (namespace `mlops`)
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/postgres/            # PostgreSQL (bases mlops_data y mlflow) + Adminer
+kubectl exec -i -n mlops deploy/postgres -- psql -U mlops -d mlops_data < sql/init.sql
+kubectl apply -f k8s/minio/
+kubectl exec -n mlops deploy/minio -- sh -c 'mc alias set local http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD && mc mb --ignore-existing local/mlflow-artifacts'
+kubectl apply -f k8s/mlflow/              # MLflow 2.16.2: backend PostgreSQL, artefactos en MinIO
+```
+
+### 2. Airflow (Helm, namespace `airflow-local`)
+
+```bash
+helm repo add apache-airflow https://airflow.apache.org && helm repo update
+kubectl create namespace airflow-local
+kubectl apply -f k8s/airflow/config.yaml  # variables del DAG (hosts con FQDN + Secret propio)
+helm install airflow apache-airflow/airflow -n airflow-local -f k8s/airflow/values.yaml --wait --timeout 15m
+```
+
+La imagen `annamerchanlm/mlops-p2-airflow:3.0.6-v1` (construida con `airflow/Dockerfile`) trae el DAG, `src/`, `sql/` y el CSV.
+
+### 3. Inferencia y observabilidad (namespace `mlops`)
+
+```bash
+kubectl apply -f k8s/api/api.yaml         # 2 réplicas, carga el modelo con alias champion
+kubectl apply -f k8s/ui/ui.yaml           # Streamlit
+kubectl apply -f k8s/monitoring/prometheus.yaml   # descubre cada pod de la API (RBAC + kubernetes_sd)
+kubectl create configmap grafana-dashboards -n mlops \
+  --from-file=api-dashboard.json=monitoring/grafana/api-dashboard.json --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f k8s/monitoring/grafana.yaml
+kubectl apply -f k8s/locust/locust.yaml
+```
+
+### 4. Acceso a las interfaces
+
+El firewall de la VM solo permite SSH: se usa `kubectl port-forward` en la VM y el reenvío de puertos de VS Code (Remote-SSH) hacia el equipo local.
+
+| Servicio | Comando | URL local | Credenciales |
+|---|---|---|---|
+| Airflow | `kubectl port-forward svc/airflow-api-server 8082:8080 -n airflow-local` | http://localhost:8082 | admin / admin |
+| MLflow | `kubectl port-forward svc/mlflow 5000:5000 -n mlops` | http://localhost:5000 | — |
+| API | `kubectl port-forward svc/inference-api 8000:8000 -n mlops` | http://localhost:8000/docs | — |
+| Streamlit | `kubectl port-forward svc/streamlit 8501:8501 -n mlops` | http://localhost:8501 | — |
+| Grafana | `kubectl port-forward svc/grafana 3000:3000 -n mlops` | http://localhost:3000 | admin / grafana_pass_2026 |
+| Prometheus | `kubectl port-forward svc/prometheus 9090:9090 -n mlops` | http://localhost:9090 | — |
+| Locust | `kubectl port-forward svc/locust 8089:8089 -n mlops` | http://localhost:8089 | — |
+| Adminer | `kubectl port-forward svc/adminer 8081:8080 -n mlops` | http://localhost:8081 | mlops / mlops_pass_2026 (servidor `postgres`) |
+
+### 5. Validación rápida
+
+```bash
+kubectl get pods -n mlops && kubectl get pods -n airflow-local
+kubectl exec -n airflow-local deploy/airflow-dag-processor -c dag-processor -- airflow dags trigger diabetes_pipeline
+kubectl exec -n mlops deploy/postgres -- psql -U mlops -d mlops_data -c \
+  "SELECT 'raw', count(*) FROM raw_data UNION ALL SELECT 'clean', count(*) FROM clean_data UNION ALL SELECT 'batches', count(*) FROM ingestion_batches;"
+curl -s localhost:8000/model-info    # con el port-forward de la API activo
+```
+
+Resultado de referencia (7 ejecuciones del DAG): `raw_data` 101.766 filas, `clean_data` 99.340, 7 lotes; modelo `diabetes-readmission` v7 (random_forest) con alias `champion`.
+
+### Imágenes publicadas en DockerHub
+
+| Imagen | Componente |
+|---|---|
+| `annamerchanlm/mlops-p2-mlflow:2.16.2` | Servidor MLflow (`mlflow/Dockerfile`) |
+| `annamerchanlm/mlops-p2-airflow:3.0.6-v1` | Airflow con DAG, código y datos (`airflow/Dockerfile`) |
+| `dnino97/diabetes-api:1.0` | API de inferencia (`api/Dockerfile`) |
+| `dnino97/diabetes-ui:1.0` | Streamlit (`ui/Dockerfile`) |
+| `dnino97/diabetes-locust:1.0` | Locust (`locust/Dockerfile`) |
 
 ---
 
