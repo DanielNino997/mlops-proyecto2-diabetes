@@ -19,6 +19,6 @@ Locust corre dentro del clúster contra `http://inference-api:8000`.
 | Máximo | 72.000 ms | 3.700 ms |
 | Reinicios de la API | 5 | 0 |
 
-- Con 1 réplica el RPS se aplana en ~18 req/s hacia los 40 usuarios y la latencia se dispara.
+- Techo de RPS: ~22 con 1 réplica (desde ~60 usuarios) y ~67 con 3 réplicas (desde ~140). Con el criterio <1 % de fallos y p95 <500 ms, 1 réplica sostiene 20 usuarios y 3 réplicas 100.
 - Los fallos de 1 réplica (`Connection refused`/`reset`, `HTTP 0`) se deben a que la liveness probe reinició el pod bajo carga.
-- Throughput ×2,8 con 3 réplicas: no llega a 3× porque las réplicas comparten 4 CPU con Locust, PostgreSQL, Prometheus y Airflow.
+- El techo de RPS crece ×3,0 (~22 → ~67). El promedio de toda la prueba sube ×2,8 porque la de 1 réplica incluye los reinicios del pod. CPU por pod: con 1 réplica llega a ~0,93 núcleos (se satura la réplica); con 3 réplicas cada pod se queda en ~0,67 (el límite pasa a ser la CPU compartida de la VM). Ver `docs/evidencias/30_grafana_cpu_por_pod.png` y `cpu_por_pod.txt`.

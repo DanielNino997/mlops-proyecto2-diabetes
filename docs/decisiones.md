@@ -83,7 +83,7 @@ Formato: **decisión → por qué → alternativa descartada**.
 | 1 réplica (1 CPU / 1 GB), probes por defecto | 17,5 | 1,9 % | 2,8 s | 17 s | 5 |
 | 3 réplicas (300m–1 CPU / 512Mi–1Gi), probes ajustadas | 48,4 | 0 % | 200 ms | 1,9 s | 0 |
 
-Carga escalonada de 20 en 20 usuarios cada minuto hasta 200. Throughput ×2,8: no llega a 3× porque las réplicas comparten 4 CPU con Locust, PostgreSQL (que registra cada predicción), Prometheus y Airflow. La mejora de latencia es mayor que ×3 porque en la prueba de 1 réplica los reinicios por la liveness probe perdían la cola de peticiones. Detalle en `docs/pruebas_de_carga.md` y `docs/resultados/`.
+Carga escalonada de 20 en 20 usuarios cada minuto hasta 200. **Techo de RPS: ~22 con 1 réplica (desde ~60 usuarios) y ~67 con 3 réplicas: ×3,0.** El promedio de toda la prueba sube ×2,8 porque la prueba de 1 réplica incluye el periodo de reinicios. Con el criterio <1 % de fallos y p95 <500 ms, 1 réplica sostiene 20 usuarios y 3 réplicas 100. **CPU por pod** (`rate(process_cpu_seconds_total)` en Prometheus): con 1 réplica el pod llega a ~0,93 núcleos cuando el RPS se aplana, así que se satura la CPU de la réplica; con 3 réplicas cada pod se estabiliza en ~0,67 núcleos con el RPS ya aplanado, así que el límite pasa a ser, muy probablemente, la CPU compartida de la VM (4 núcleos con Locust, PostgreSQL, Prometheus y Airflow). Detalle por nivel en `docs/pruebas_de_carga.md`.
 
 ### Dificultades encontradas y solución
 1. **El k3s de Rancher no traía StorageClass** → ningún PVC se podía crear. Se instaló `local-path-provisioner` como StorageClass por defecto.
