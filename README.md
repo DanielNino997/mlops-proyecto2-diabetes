@@ -287,3 +287,6 @@ Capturas en `docs/evidencias/` (numeración de `docs/evidencias.md`). Las de API
 
 ### Pruebas de carga
 Resultados y análisis en `docs/pruebas_de_carga.md`; reportes y CSV de Locust en `docs/resultados/`.
+
+### Video Sustentacíón
+[Ver el video de sustentación en YouTube](https://www.youtube.com/watch?v=aAIkN0Pwcy8)
