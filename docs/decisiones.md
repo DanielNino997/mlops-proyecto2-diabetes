@@ -95,3 +95,4 @@ Carga escalonada de 20 en 20 usuarios cada minuto hasta 200. **Techo de RPS: ~22
 7. **Límite de 4 CPU de la VM**: 3 réplicas con `requests: 1 CPU` no cabían; se usaron `requests: 300m` y `limits: 1`.
 8. **Sidecars `log-groomer` del chart sin `limits`** → se les agregaron recursos en `values.yaml` (condición de aceptación #12).
 9. **`args` vs `command` en Locust**: `args` reemplazó el `CMD` completo de la imagen (incluido el ejecutable `locust`) y el pod quedó en `CrashLoopBackOff`. Solución: `command: ["locust"]` + `args`.
+10. **Sidecars `log-groomer` con OOMKilled**: con límite de 128 Mi el sistema los mataba por memoria (174 reinicios en 21 h, pods en `1/2`). Se subió el límite a 512 Mi. Muestra el equilibrio de los límites: muy bajos rompen el servicio y muy altos desperdician recursos.
