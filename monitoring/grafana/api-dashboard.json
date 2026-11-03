@@ -35,7 +35,16 @@
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "short"
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
     },
     "overrides": []
    },
@@ -64,7 +73,16 @@
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "reqps"
+     "unit": "reqps",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
     },
     "overrides": []
    },
@@ -93,7 +111,16 @@
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "none"
+     "unit": "none",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
     },
     "overrides": []
    },
@@ -116,13 +143,22 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(diabetes_api_requests_total{endpoint=\"/predict\",status=~\"5..\"}[1m])) / sum(rate(diabetes_api_requests_total{endpoint=\"/predict\"}[1m]))",
+     "expr": "(sum(rate(diabetes_api_requests_total{endpoint=\"/predict\",status=~\"5..\"}[1m])) or vector(0)) / clamp_min(sum(rate(diabetes_api_requests_total{endpoint=\"/predict\"}[1m])), 0.001)",
      "legendFormat": "5xx"
     }
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "percentunit"
+     "unit": "percentunit",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
     },
     "overrides": []
    },
